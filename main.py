@@ -195,13 +195,9 @@ def main(page: ft.Page):
     product_name = ft.TextField(label="Product Name", value="TRIETHYLAMINE")
     batch_no = ft.TextField(label="Batch No", value="1113/2526")
     
-    # FIX 1: Use Expanded so dates fit on screen
+    # Remove expand=True so they stay normal height
     mfg_date = ft.TextField(label="Mfg Date", value=datetime.now().strftime("%d/%m/%Y"))
     retest_date = ft.TextField(label="Retest Date", value="11/11/2026")
-    row_dates = ft.Row([
-        ft.Expanded(mfg_date), 
-        ft.Expanded(retest_date)
-    ])
 
     net_wt = ft.TextField(label="Net Wt", value="150 KGS")
     warning_text = ft.TextField(label="Warning Text", value="(FOR INDUSTRIAL USE ONLY)")
@@ -240,7 +236,8 @@ def main(page: ft.Page):
         layout,
         product_name,
         batch_no,
-        row_dates, # The fixed row
+        mfg_date,     # Added directly (Top)
+        retest_date,  # Added directly (Bottom)
         net_wt,
         warning_text,
         ft.Divider(),
