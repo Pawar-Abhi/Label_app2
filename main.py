@@ -75,7 +75,7 @@ def generate_pdf_12x18(filename, layout_option, data):
         pdf.set_font("Helvetica", "", body_size)
         padding_left = 5
         line_spacing = 5
-        start_text_y = line_y_header + body_size - 4.8
+        start_text_y = line_y_header + body_size - 4
 
         # Left Data
         pdf.text(x + padding_left, start_text_y, f"BATCH NO:      {d['batch_no']}")
@@ -107,10 +107,10 @@ def generate_pdf_12x18(filename, layout_option, data):
         pdf.text(comp_x, comp_y, comp_text)
 
         # Address
-        addr_size = 8
+        addr_size = 7
         pdf.set_font("Helvetica", "", addr_size)
         addr_x = mid_x + 3
-        addr_start_y = line_y_footer + addr_size - 4.2
+        addr_start_y = line_y_footer + addr_size - 3
         addr_line_h = 3.5
         pdf.text(addr_x, addr_start_y, d["address_line1"])
         pdf.text(addr_x, addr_start_y + addr_line_h, d["address_line2"])
@@ -123,41 +123,28 @@ def generate_pdf_12x18(filename, layout_option, data):
             y_pos = MARGIN_OUTER + (r * (sticker_h + GAP_BETWEEN))
             draw_sticker(x_pos, y_pos, sticker_w, sticker_h, data)
 
-    # =========================================================
-    # DRAW CUTTING MARKS (RED)
-    # =========================================================
+    # --- CUTTING MARKS ---
     pdf.set_draw_color(255, 0, 0) # Red
     pdf.set_line_width(0.2)
     cross_size = 2
 
-    # 1. Inner Crosses (In the gaps between stickers)
+    # 1. Inner Crosses
     for i in range(cols - 1):
         for j in range(rows - 1):
             gap_center_x = MARGIN_OUTER + sticker_w + (i * (sticker_w + GAP_BETWEEN)) + (GAP_BETWEEN / 2)
             gap_center_y = MARGIN_OUTER + sticker_h + (j * (sticker_h + GAP_BETWEEN)) + (GAP_BETWEEN / 2)
-            # Horizontal bar
             pdf.line(gap_center_x - cross_size, gap_center_y, gap_center_x + cross_size, gap_center_y)
-            # Vertical bar
             pdf.line(gap_center_x, gap_center_y - cross_size, gap_center_x, gap_center_y + cross_size)
 
-    # 2. Outer Edge Marks (Top & Bottom Margins)
+    # 2. Outer Edge Marks
     for i in range(cols - 1):
-        # Center of the vertical gap
         gap_center_x = MARGIN_OUTER + sticker_w + (i * (sticker_w + GAP_BETWEEN)) + (GAP_BETWEEN / 2)
-        
-        # Top Edge Line (From 0 to Margin)
         pdf.line(gap_center_x, 0, gap_center_x, MARGIN_OUTER)
-        # Bottom Edge Line (From PageBottom-Margin to PageBottom)
         pdf.line(gap_center_x, page_height - MARGIN_OUTER, gap_center_x, page_height)
 
-    # 3. Outer Edge Marks (Left & Right Margins)
     for j in range(rows - 1):
-        # Center of the horizontal gap
         gap_center_y = MARGIN_OUTER + sticker_h + (j * (sticker_h + GAP_BETWEEN)) + (GAP_BETWEEN / 2)
-        
-        # Left Edge Line (From 0 to Margin)
         pdf.line(0, gap_center_y, MARGIN_OUTER, gap_center_y)
-        # Right Edge Line (From PageRight-Margin to PageRight)
         pdf.line(page_width - MARGIN_OUTER, gap_center_y, page_width, gap_center_y)
 
     # Output file
@@ -174,46 +161,70 @@ def main(page: ft.Page):
     page.window_width = 400
     page.window_height = 800
 
+    # --- Helper to create data dict ---
+    def get_form_data():
+        return {
+            "product_name": product_name.value,
+            "batch_no": batch_no.value,
+            "mfg_date": mfg_date.value,
+            "retest_date": retest_date.value,
+            "net_wt": net_wt.value,
+            "warning": warning_text.value,
+            "company_name": "M/S. NOVA ENTERPRISES",
+            "address_line1": "Plot no. F-39, MIDC Shiroli, Kolhapur-416 122",
+            "address_line2": "Ph.: +91-9922996051",
+            "email": "e-mail: sales@novaent.in"
+        }
+
+    # --- Save Dialog (Only used on Windows/Desktop) ---
     def save_file_result(e: ft.FilePickerResultEvent):
         if e.path:
             try:
-                data = {
-                    "product_name": product_name.value,
-                    "batch_no": batch_no.value,
-                    "mfg_date": mfg_date.value,
-                    "retest_date": retest_date.value,
-                    "net_wt": net_wt.value,
-                    "warning": warning_text.value,
-                    "company_name": "M/S. NOVA ENTERPRISES",
-                    "address_line1": "Plot no. F-39, MIDC Shiroli, Kolhapur-416 122",
-                    "address_line2": "Ph.: +91-9922996051",
-                    "email": "e-mail: sales@novaent.in"
-                }
-                
-                generate_pdf_12x18(e.path, layout.value, data)
+                generate_pdf_12x18(e.path, layout.value, get_form_data())
                 page.open(ft.SnackBar(content=ft.Text(f"Saved to {e.path}"), bgcolor="green"))
-                
                 if os.name == 'nt': 
                     os.startfile(e.path)
-                    
             except Exception as err:
                 page.open(ft.SnackBar(content=ft.Text(f"Error: {str(err)}"), bgcolor="red"))
 
     save_dialog = ft.FilePicker(on_result=save_file_result)
     page.overlay.append(save_dialog)
 
-    # UI Inputs
+    # --- UI Inputs ---
     layout = ft.Dropdown(label="Layout", options=[ft.dropdown.Option("3x6"), ft.dropdown.Option("2x8")], value="3x6")
     product_name = ft.TextField(label="Product Name", value="TRIETHYLAMINE")
     batch_no = ft.TextField(label="Batch No", value="1113/2526")
+    
+    # FIX 1: Use Expanded so dates fit on screen
     mfg_date = ft.TextField(label="Mfg Date", value=datetime.now().strftime("%d/%m/%Y"))
     retest_date = ft.TextField(label="Retest Date", value="11/11/2026")
+    row_dates = ft.Row([
+        ft.Expanded(mfg_date), 
+        ft.Expanded(retest_date)
+    ])
+
     net_wt = ft.TextField(label="Net Wt", value="150 KGS")
     warning_text = ft.TextField(label="Warning Text", value="(FOR INDUSTRIAL USE ONLY)")
 
+    # --- BUTTON CLICK HANDLER ---
     def on_btn_click(e):
-        fname = f"Label_{datetime.now().strftime('%H%M%S')}.pdf"
-        save_dialog.save_file(dialog_title="Save PDF", file_name=fname, allowed_extensions=["pdf"])
+        # FIX 2: Check Platform to fix Android Path Error
+        if page.platform == ft.PagePlatform.ANDROID:
+            try:
+                # Force path to standard Downloads folder
+                filename = f"Label_{datetime.now().strftime('%H%M%S')}.pdf"
+                save_path = f"/storage/emulated/0/Download/{filename}"
+                
+                generate_pdf_12x18(save_path, layout.value, get_form_data())
+                
+                page.open(ft.SnackBar(content=ft.Text(f"Saved to DOWNLOADS folder as {filename}"), bgcolor="green"))
+            except Exception as err:
+                # Fallback error message
+                page.open(ft.SnackBar(content=ft.Text(f"Android Save Error: {str(err)}"), bgcolor="red"))
+        else:
+            # On PC, let user pick the folder
+            fname = f"Label_{datetime.now().strftime('%H%M%S')}.pdf"
+            save_dialog.save_file(dialog_title="Save PDF", file_name=fname, allowed_extensions=["pdf"])
 
     btn = ft.ElevatedButton(
         "Generate Labels", 
@@ -229,7 +240,7 @@ def main(page: ft.Page):
         layout,
         product_name,
         batch_no,
-        ft.Row([mfg_date, retest_date]),
+        row_dates, # The fixed row
         net_wt,
         warning_text,
         ft.Divider(),
